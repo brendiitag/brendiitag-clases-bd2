@@ -1,0 +1,188 @@
+El patrón Modelo-Vista-Controlador para el diseño de aplicaciones Web es un estándar de la industria en el mundo Java. Hay muchos libros y recursos excelentes disponibles sobre el tema que ayudan a acelerar el proceso de aprendizaje para el equipo de desarrollo. En un breve repaso, MVC viene de Model, View, Controller, o bien: Modelo, Vista y Controlador. La idea básica de este patrón es separar nuestros sistemas en tres capas, el Modelo, la Vista y el Controlador.
+El Modelo se encarga de todo lo que tiene que ver con la persistencia de datos. Guarda y recupera la información del medio persistente que utilicemos, ya sea una base de datos, ficheros de texto, XML, etc.
+La Vista presenta la información obtenida con el modelo de manera que el usuario la pueda visualizar.
+El Controlador, dependiendo de la acción solicitada por el usuario, es el que pide al modelo la información necesaria e invoca a la plantilla(de la vista) que corresponda para que la información sea presentada.
+Hay algo de esfuerzo necesario para aprender a utilizar un marco MVC en php. Sin embargo, para el desarrollador de aplicaciones Web grandes, este esfuerzo debe ser recompensado por los numerosos beneficios de utilizar un patrón de diseño MVC, tales como:
+Aplica la modularidad y la partición de aplicación.
+Aumenta la creación de roles específicos en el desarrollo.
+Aumenta la capacidad de gestión de código.
+Aumento de la extensibilidad del código (Capacidad de adaptación a cambios).
+< ?php
+//Incluimos el FrontController
+require 'libs/FrontController.php';
+//Lo iniciamos con su método estático main.
+FrontController::main();
+?>
+< ?php
+class FrontController
+{
+    static function main()
+    {
+        //Incluimos algunas clases:
+ 
+        require 'libs/Config.php'; //de configuracion
+        require 'libs/SPDO.php'; //PDO con singleton
+        require 'libs/View.php'; //Mini motor de plantillas
+ 
+        require 'config.php'; //Archivo con configuraciones.
+ 
+        //Con el objetivo de no repetir nombre de clases, nuestros controladores
+        //terminarán todos en Controller. Por ej, la clase controladora Items, será ItemsController
+ 
+        //Formamos el nombre del Controlador o en su defecto, tomamos que es el IndexController
+        if(! empty($_GET['controlador']))
+              $controllerName = $_GET['controlador'] . 'Controller';
+        else
+              $controllerName = "IndexController";
+ 
+        //Lo mismo sucede con las acciones, si no hay acción, tomamos index como acción
+        if(! empty($_GET['accion']))
+              $actionName = $_GET['accion'];
+        else
+              $actionName = "index";
+ 
+        $controllerPath = $config->get('controllersFolder') . $controllerName . '.php';
+ 
+        //Incluimos el fichero que contiene nuestra clase controladora solicitada
+        if(is_file($controllerPath))
+              require $controllerPath;
+        else
+              die('El controlador no existe - 404 not found');
+ 
+        //Si no existe la clase que buscamos y su acción, mostramos un error 404
+        if (is_callable(array($controllerName, $actionName)) == false)
+        {
+            trigger_error ($controllerName . '->' . $actionName . '` no existe', E_USER_NOTICE);
+            return false;
+        }
+        //Si todo esta bien, creamos una instancia del controlador y llamamos a la acción
+        $controller = new $controllerName();
+        $controller->$actionName();
+    }
+}
+?>< ?php
+class View
+{
+    function __construct()
+    {
+    }
+ 
+    public function show($name, $vars = array())
+    {
+        //$name es el nombre de nuestra plantilla, por ej, listado.php
+        //$vars es el contenedor de nuestras variables, es un arreglo del tipo llave => valor, opcional.
+ 
+        //Traemos una instancia de nuestra clase de configuracion.
+        $config = Config::singleton();
+ 
+        //Armamos la ruta a la plantilla
+        $path = $config->get('viewsFolder') . $name;
+ 
+        //Si no existe el fichero en cuestion, mostramos un 404
+        if (file_exists($path) == false)
+        {
+            trigger_error ('Template `' . $path . '` does not exist.', E_USER_NOTICE);
+            return false;
+        }
+ 
+        //Si hay variables para asignar, las pasamos una a una.
+        if(is_array($vars))
+        {
+                    foreach ($vars as $key => $value)
+                    {
+                    $key = $value;
+                    }
+                }
+ 
+        //Finalmente, incluimos la plantilla.
+        include($path);
+    }
+}
+/*
+ El uso es bastante sencillo:
+ $vista = new View();
+ $vista->show('listado.php', array("nombre" => "Juan"));
+*/
+?>
+< !DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+ 
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <title>MVC - Modelo, Vista, Controlador - Jourmoly</title>
+</head>
+<body>
+<table>
+    <tr>
+        <th>ID
+        </th><th>Item
+    </th></tr>
+    < ?php
+    // $listado es una variable asignada desde el controlador ItemsController.
+    while($item = $listado->fetch())
+    {
+    ?>
+    <tr>
+        <td>< ?php echo $item['id_item']?></td>
+        <td>< ?php echo $item['item']?></td>
+    </tr>
+    < ?php
+    }
+    ?>
+</table>
+</body>
+</html>
+< ?php
+class Config
+{
+    private $vars;
+    private static $instance;
+ 
+    private function __construct()
+    {
+        $this->vars = array();
+    }
+ 
+    //Con set vamos guardando nuestras variables.
+    public function set($name, $value)
+    {
+        if(!isset($this->vars[$name]))
+        {
+            $this->vars[$name] = $value;
+        }
+    }
+ 
+    //Con get('nombre_de_la_variable') recuperamos un valor.
+    public function get($name)
+    {
+        if(isset($this->vars[$name]))
+        {
+            return $this->vars[$name];
+        }
+    }
+ 
+    public static function singleton()
+    {
+        if (!isset(self::$instance)) {
+            $c = __CLASS__;
+            self::$instance = new $c;
+        }
+ 
+        return self::$instance;
+    }
+}
+/*
+ Uso:
+ 
+ $config = Config::singleton();
+ $config->set('nombre', 'Federico');
+ echo $config->get('nombre');
+ 
+ $config2 = Config::singleton();
+ echo $config2->get('nombre');
+ 
+*/
+?>
+
+
