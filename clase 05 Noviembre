@@ -1,0 +1,32 @@
+/*Ejercicio #1 (Disparadores)*/
+
+Insert into usuario_xxx(id)
+Values(2);
+/*crear el disparador*/ 
+Create or replace trigger disparador_usuario_xxx before insert on usuario_xxx for each row 
+Begin 
+If :new.edad <18 then 
+	Raise_application_error (-20001, ’Lo siento eres pequeño’);
+End if;
+End;
+
+/*prueba del disparador*/
+sql> insert into usuario_xxx(edad)
+Values (20); 
+
+Sql> insert into usuario(edad)
+Values(16);
+/*lanza un error, el que se indico con el numero -20001*/
+
+Sql>select * from usuario_xxx;
+
+/*Ejercicio #2(Disparadores)*/
+
+Create or replace trigger disparador_usuario_xxx before insert on usuario_xxx for each row 
+Begin 
+/*length:revisa la longitud de una cadena de caracteres*/
+If :new.edad <18 or length(:new.email)<3 then 
+	Raise_application_error (-20001, ’Lo siento eres pequeño’);
+End if;
+End;
+
